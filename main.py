@@ -10,19 +10,27 @@ app = FastAPI()
 def home():
     return {"status": "Servidor funcionando correctamente"}
 
-# 1. CARGA DE DATOS GLOBAL (Para las 7 funciones)
-d1 = pd.read_csv('d_limpio.csv')
+# 1. CARGA DE DATOS GLOBAL OPTIMIZADA
+# Solo cargamos las columnas que usan las 7 funciones
+columnas_uso = ['title', 'popularity', 'overview', 'genres', 'release_year', 'vote_average', 'return', 'budget', 'revenue']
 
-# 2. OPTIMIZACIÓN ML (Solo para la función 7)
-# Reducimos a 5000 para asegurar que corra en cualquier servidor gratuito
+# Cargamos solo 15,000 para que las funciones 1 a 6 tengan datos, pero sin saturar la RAM
+d1 = pd.read_csv('d_limpio.csv', usecols=columnas_uso, nrows=15000)
+
+# 2. OPTIMIZACIÓN ML (Función 7)
+# Usamos las 5000 más populares de esas 15,000
 df_ml = d1.sort_values('popularity', ascending=False).head(5000).copy()
 df_ml['combined'] = df_ml['overview'].fillna('') + " " + df_ml['genres'].fillna('')
 
 tfidf = TfidfVectorizer(stop_words='english')
 tfidf_matrix = tfidf.fit_transform(df_ml['combined'])
+
+# Usamos float32 para reducir el peso de la matriz a la mitad
 cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix).astype('float32')
 
 indices = pd.Series(df_ml.index, index=df_ml['title'].str.lower()).drop_duplicates()
+
+
 
 # --- FUNCIONES 1 a 6 (Consultas sobre el df completo) ---
 # 1. Cantidad de películas por país y año
